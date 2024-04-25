@@ -1,0 +1,42 @@
+"copyright@ Dalian University of Technology"
+"Coding by Zhengguang Wang"
+
+import pandas as pd
+
+#读取.trc文件，跳过前四行作为表头
+df = pd.read_csv('D:/DLUT_Hospital_KineticData/20240226_Zhai/XSENS/ProcessedData_trc/trc13_zhai.trc', skiprows=4, delimiter='\t')
+
+# 读取原始的.trc文件，仅提取前四行作为表头数据
+header_data = []
+with open('D:/DLUT_Hospital_KineticData/20240226_Zhai/XSENS/ProcessedData_trc/trc13_zhai.trc', 'r') as file:
+    header_data = [next(file).strip() for _ in range(4)]
+
+
+# 确定要处理的列范围
+column_range = range(3, len(df.columns) - 1, 3)  # 从第4列开始，步长为3
+
+# 处理列交换和乘-1的操作
+for n in column_range:
+    col1_index = n  # 第3n+1列的索引
+    col2_index = n + 1  # 第3n+2列的索引
+
+    if col1_index < len(df.columns) and col2_index < len(df.columns):  # 确保两列索引均在数据框的范围内
+        col1 = df.columns[col1_index]  # 第3n+1列的名称
+        col2 = df.columns[col2_index]  # 第3n+2列的名称
+        temp1 = df[col1].copy()  # 临时存储第3n+1列的值
+        temp2 = df[col2].copy()  # 临时存储第3n+2列的值
+        df[col1] = temp2  # 第3n+1列的值乘以-1
+        df[col2] = temp1 * -1  # 第3n+2列的值等于临时存储的第3n+1列的值
+
+# 表头和处理后的数据合并,重建完整的DataFrame
+new_df = pd.concat([pd.DataFrame([header_data]), df], ignore_index=True)
+
+# 移除空的前四列
+final_df = new_df.iloc[:, 4:]
+
+# 将合并后的数据写入新的.trc文件，保留原有表头配置
+with open('D:/DLUT_Hospital_KineticData/20240226_Zhai/XSENS/ProcessedData_trc/trc13_zhai_Transform.trc', 'w') as file:
+   for index, line in enumerate(header_data):
+       if index != 5:  # 删除第六行数据
+           file.write(line + '\n')
+final_df.to_csv('D:/DLUT_Hospital_KineticData/20240226_Zhai/XSENS/ProcessedData_trc/trc13_zhai_Transform.trc',  sep='\t', index=False, mode='a')
