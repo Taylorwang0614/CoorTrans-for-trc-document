@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"copyright@ Dalian University of Technology"
+"Coding by Zhengguang Wang"
+
+import pandas as pd
+import os
+
+# Define the directory path to be processed
+directory_path = '/Volumes/Zhengguang/IntMed Labotary/TKR-data_postoperation/TKR-SHUHOU/data/subjectA_trc'
+
+# Traverse through each .trc file in the directory
+for filename in os.listdir(directory_path):
+    if filename.endswith(".trc") and "_Transform" not in filename: # Determine whether a file is processed
+        file_path = os.path.join(directory_path, filename)
+
+        # Read the .trc file, skipping the first four lines as the header
+        df = pd.read_csv(file_path, skiprows=4, delimiter='\t')
+
+        # Read the original .trc file, extract only the first four lines as header data
+        header_data = []
+        with open(file_path, 'r') as file:
+            header_data = [next(file).strip() for _ in range(4)]
+
+        # Determine the column range to be processed
+        column_range = range(3, len(df.columns) - 1, 3)  # Start from the 4th column, with a step size of 3
+
+        # Perform column swapping and multiplication by -1
+        for n in column_range:
+            col1_index = n  # Index of the 3n+1 column
+            col2_index = n + 1  # Index of the 3n+2 column
+
+            if col1_index < len(df.columns) and col2_index < len(df.columns):  # Ensure both column indices are within the range of the dataframe
+                col1 = df.columns[col1_index]  # Name of the 3n+1 column
+                col2 = df.columns[col2_index]  # Name of the 3n+2 column
+                temp1 = df[col1].copy()  # Temporary storage of the values in the 3n+1 column
+                temp2 = df[col2].copy()  # Temporary storage of the values in the 3n+2 column
+                df[col1] = temp2  # Values in the 3n+1 column multiplied by -1
+                df[col2] = temp1 * -1  # Values in the 3n+2 column replaced with the temporary values from the 3n+1 column
+
+        # Merge the header and processed data to re-build the complete DataFrame
+        new_df = pd.concat([pd.DataFrame([header_data]), df], ignore_index=True)
+
+        # Remove the empty first four columns
+        final_df = new_df.iloc[:, 4:]
+
+        # Write the merged data into a new .trc file, retaining the original header configuration
+        new_file_path = os.path.join(directory_path, filename.replace('.trc', '_Transform.trc'))
+        with open(new_file_path, 'w') as file:
+            for index, line in enumerate(header_data):
+                if index != 5:  # Exclude the 4th row of data
+                    file.write(line + '\n')
+        final_df.to_csv(new_file_path, sep='\t', index=False, mode='a')
+
+print("Batch processing of .trc files completed.")
